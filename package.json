@@ -1,0 +1,26 @@
+{
+  "name": "agent-emergency-dashboard",
+  "version": "1.0.0",
+  "description": "Real-time Agent Emergency Dashboard built with Node.js, Raspberry Pi and WebSockets. Monitor health data, GPS location and SOS alerts from smartwatch and mobile devices.",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nickgaitan/agent-emergency-dashboard.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/nickgaitan/agent-emergency-dashboard/issues"
+  },
+  "homepage": "https://github.com/nickgaitan/agent-emergency-dashboard#readme",
+  "dependencies": {
+    "express": "^5.2.1",
+    "socket.io": "^4.8.3"
+  }
+}

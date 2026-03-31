@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Agent Emergency Dashboard</title>
+<script src="/socket.io/socket.io.js"></script>
+
+<style>
+
+body{
+background:black;
+color:#00ff9d;
+font-family:monospace;
+text-align:center;
+}
+
+.card{
+border:1px solid #00ff9d;
+padding:20px;
+margin:10px;
+display:inline-block;
+width:200px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>AGENT STATUS</h1>
+
+<div class="card">
+❤️ Heart Rate
+<h2 id="heart"></h2>
+</div>
+
+<div class="card">
+👣 Steps
+<h2 id="steps"></h2>
+</div>
+
+<div class="card">
+🔥 Calories
+<h2 id="calories"></h2>
+</div>
+
+<div class="card">
+📍 Location
+<h2 id="location"></h2>
+</div>
+
+<div class="card">
+🚨 SOS
+<h2 id="sos"></h2>
+</div>
+
+<script>
+
+const socket = io()
+
+socket.on("update",(data)=>{
+document.getElementById("heart").innerText = data.heart
+document.getElementById("steps").innerText = data.steps
+document.getElementById("calories").innerText = data.calories
+document.getElementById("location").innerText = data.location
+document.getElementById("sos").innerText = data.sos ? "ALERT" : "OK"
+})
+
+</script>
+
+</body>
+</html>
