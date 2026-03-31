@@ -1,71 +1,147 @@
 <!DOCTYPE html>
-<html>
+<html lang="el">
 <head>
-<title>Agent Emergency Dashboard</title>
-<script src="/socket.io/socket.io.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AGENT EMERGENCY DASHBOARD</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        :root {
+            --neon-green: #00ff9d;
+            --dark-bg: #0a0a0a;
+            --alert-red: #ff4444;
+        }
 
-<style>
+        body {
+            background-color: var(--dark-bg);
+            background-image: linear-gradient(0deg, transparent 24%, rgba(0, 255, 157, 0.05) 25%, rgba(0, 255, 157, 0.05) 26%, transparent 27%, transparent 74%, rgba(0, 255, 157, 0.05) 75%, rgba(0, 255, 157, 0.05) 76%, transparent 77%, transparent), linear-gradient(90deg, transparent 24%, rgba(0, 255, 157, 0.05) 25%, rgba(0, 255, 157, 0.05) 26%, transparent 27%, transparent 74%, rgba(0, 255, 157, 0.05) 75%, rgba(0, 255, 157, 0.05) 76%, transparent 77%, transparent);
+            background-size: 50px 50px;
+            color: var(--neon-green);
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
 
-body{
-background:black;
-color:#00ff9d;
-font-family:monospace;
-text-align:center;
-}
+        header {
+            width: 100%;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 2px solid var(--neon-green);
+            box-shadow: 0 0 20px rgba(0, 255, 157, 0.2);
+            text-transform: uppercase;
+            letter-spacing: 5px;
+        }
 
-.card{
-border:1px solid #00ff9d;
-padding:20px;
-margin:10px;
-display:inline-block;
-width:200px;
-}
+        .container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            padding: 40px;
+            max-width: 1200px;
+            width: 100%;
+        }
 
-</style>
+        .card {
+            background: rgba(0, 255, 157, 0.05);
+            border: 1px solid var(--neon-green);
+            padding: 20px;
+            border-radius: 5px;
+            text-align: center;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
 
+        .card:hover {
+            box-shadow: 0 0 15px var(--neon-green);
+            transform: translateY(-5px);
+        }
+
+        .card h3 { margin: 0; font-size: 0.9rem; opacity: 0.8; }
+        .card h2 { margin: 10px 0; font-size: 2.5rem; text-shadow: 0 0 10px var(--neon-green); }
+
+        #sos-card.alert {
+            background: rgba(255, 68, 68, 0.2);
+            border-color: var(--alert-red);
+            color: var(--alert-red);
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            50% { opacity: 0.5; }
+        }
+
+        .status-bar {
+            position: fixed;
+            bottom: 10px;
+            right: 20px;
+            font-size: 0.8rem;
+        }
+    </style>
 </head>
-
 <body>
 
-<h1>AGENT STATUS</h1>
+<header>
+    <h1>Agent Telemetry Terminal</h1>
+</header>
 
-<div class="card">
-❤️ Heart Rate
-<h2 id="heart"></h2>
+<div class="container">
+    <div class="card">
+        <h3>❤️ HEART RATE</h3>
+        <h2 id="heart">--</h2>
+        <span>BPM</span>
+    </div>
+    <div class="card">
+        <h3>👣 STEPS</h3>
+        <h2 id="steps">--</h2>
+    </div>
+    <div class="card">
+        <h3>🔥 CALORIES</h3>
+        <h2 id="calories">--</h2>
+    </div>
+    <div class="card">
+        <h3>📍 COORDINATES</h3>
+        <h2 id="location" style="font-size: 1.2rem;">FETCHING...</h2>
+    </div>
+    <div id="sos-card" class="card">
+        <h3>🚨 STATUS</h3>
+        <h2 id="sos">STANDBY</h2>
+    </div>
 </div>
 
-<div class="card">
-👣 Steps
-<h2 id="steps"></h2>
-</div>
-
-<div class="card">
-🔥 Calories
-<h2 id="calories"></h2>
-</div>
-
-<div class="card">
-📍 Location
-<h2 id="location"></h2>
-</div>
-
-<div class="card">
-🚨 SOS
-<h2 id="sos"></h2>
+<div class="status-bar">
+    CONNECTION: <span id="status" style="color: yellow;">CONNECTING...</span>
 </div>
 
 <script>
+    const socket = io();
+    const statusEl = document.getElementById('status');
 
-const socket = io()
+    socket.on('connect', () => {
+        statusEl.innerText = 'ONLINE';
+        statusEl.style.color = 'var(--neon-green)';
+    });
 
-socket.on("update",(data)=>{
-document.getElementById("heart").innerText = data.heart
-document.getElementById("steps").innerText = data.steps
-document.getElementById("calories").innerText = data.calories
-document.getElementById("location").innerText = data.location
-document.getElementById("sos").innerText = data.sos ? "ALERT" : "OK"
-})
-
+    socket.on('update', (data) => {
+        document.getElementById("heart").innerText = data.heart || 0;
+        document.getElementById("steps").innerText = data.steps || 0;
+        document.getElementById("calories").innerText = data.calories || 0;
+        document.getElementById("location").innerText = data.location || "UNKNOWN";
+        
+        const sosCard = document.getElementById("sos-card");
+        const sosText = document.getElementById("sos");
+        
+        if(data.sos) {
+            sosCard.classList.add('alert');
+            sosText.innerText = "EMERGENCY";
+        } else {
+            sosCard.classList.remove('alert');
+            sosText.innerText = "SAFE";
+        }
+    });
 </script>
 
 </body>

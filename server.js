@@ -10,10 +10,10 @@ app.use(express.json())
 app.use(express.static("public"))
 
 let agentData = {
-  heart: 0,
-  steps: 0,
-  calories: 0,
-  location: "Unknown",
+  heart: 82,
+  steps: 5454,
+  calories: 450,
+  location: "Online",
   sos: false
 }
 
