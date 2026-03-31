@@ -3,92 +3,145 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AGENT EMERGENCY DASHBOARD</title>
-    <script src="/socket.io/socket.io.js"></script>
+    <title>AGENT COMMAND CENTER v2.0</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
         :root {
             --neon-green: #00ff9d;
             --dark-bg: #0a0a0a;
+            --sidebar-bg: #111111;
             --alert-red: #ff4444;
+            --map-dim: #1a1a1a;
         }
 
         body {
             background-color: var(--dark-bg);
-            background-image: linear-gradient(0deg, transparent 24%, rgba(0, 255, 157, 0.05) 25%, rgba(0, 255, 157, 0.05) 26%, transparent 27%, transparent 74%, rgba(0, 255, 157, 0.05) 75%, rgba(0, 255, 157, 0.05) 76%, transparent 77%, transparent), linear-gradient(90deg, transparent 24%, rgba(0, 255, 157, 0.05) 25%, rgba(0, 255, 157, 0.05) 26%, transparent 27%, transparent 74%, rgba(0, 255, 157, 0.05) 75%, rgba(0, 255, 157, 0.05) 76%, transparent 77%, transparent);
+            background-image: linear-gradient(0deg, transparent 24%, rgba(0, 255, 157, 0.03) 25%, rgba(0, 255, 157, 0.03) 26%, transparent 27%, transparent 74%, rgba(0, 255, 157, 0.03) 75%, rgba(0, 255, 157, 0.03) 76%, transparent 77%, transparent), linear-gradient(90deg, transparent 24%, rgba(0, 255, 157, 0.03) 25%, rgba(0, 255, 157, 0.03) 26%, transparent 27%, transparent 74%, rgba(0, 255, 157, 0.03) 75%, rgba(0, 255, 157, 0.03) 76%, transparent 77%, transparent);
             background-size: 50px 50px;
             color: var(--neon-green);
             font-family: 'Courier New', Courier, monospace;
             margin: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
+            display: grid;
+            grid-template-areas: "sidebar header header" "sidebar map vitals";
+            grid-template-columns: 250px 1fr 300px;
+            grid-template-rows: 60px 1fr;
+            height: 100vh;
+            overflow: hidden;
         }
 
+        /* --- Header --- */
         header {
-            width: 100%;
-            padding: 20px;
-            text-align: center;
+            grid-area: header;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
             border-bottom: 2px solid var(--neon-green);
             box-shadow: 0 0 20px rgba(0, 255, 157, 0.2);
             text-transform: uppercase;
             letter-spacing: 5px;
         }
 
-        .container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        header h1 { margin: 0; font-size: 1.2rem; text-shadow: 0 0 10px var(--neon-green); }
+
+        /* --- Sidebar --- */
+        #sidebar {
+            grid-area: sidebar;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--neon-green);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        #sidebar h3 { margin: 0; font-size: 0.8rem; opacity: 0.8; letter-spacing: 2px; text-transform: uppercase; }
+        
+        .log-entry { font-size: 0.7rem; border-bottom: 1px solid rgba(0,255,157,0.1); padding: 5px 0; }
+        .log-entry span.time { color: rgba(0,255,157,0.5); }
+        
+        #connection-status { margin-top: auto; font-size: 0.8rem; }
+
+        /* --- Map Area --- */
+        #map-container {
+            grid-area: map;
+            position: relative;
+            background: var(--map-dim);
+            border-right: 1px solid var(--neon-green);
+        }
+
+        #map { height: 100%; width: 100%; z-index: 1; }
+        
+        /* Tactical Overlay for Map */
+        #map-container::after {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 255, 157, 0.01) 2px, rgba(0, 255, 157, 0.01) 4px);
+            pointer-events: none; z-index: 10;
+        }
+
+        /* Leaflet Dark Mode Tiles */
+        .leaflet-tile { filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%); }
+
+        /* --- Vitals Area --- */
+        #vitals {
+            grid-area: vitals;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
             gap: 20px;
-            padding: 40px;
-            max-width: 1200px;
-            width: 100%;
+            overflow-y: auto;
         }
 
         .card {
-            background: rgba(0, 255, 157, 0.05);
+            background: rgba(0, 255, 157, 0.02);
             border: 1px solid var(--neon-green);
-            padding: 20px;
+            padding: 15px;
             border-radius: 5px;
             text-align: center;
             transition: all 0.3s;
             position: relative;
-            overflow: hidden;
         }
 
-        .card:hover {
-            box-shadow: 0 0 15px var(--neon-green);
-            transform: translateY(-5px);
-        }
+        .card:hover { box-shadow: 0 0 10px var(--neon-green); transform: translateY(-3px); }
 
-        .card h3 { margin: 0; font-size: 0.9rem; opacity: 0.8; }
-        .card h2 { margin: 10px 0; font-size: 2.5rem; text-shadow: 0 0 10px var(--neon-green); }
+        .card h3 { margin: 0; font-size: 0.7rem; opacity: 0.8; }
+        .card h2 { margin: 5px 0; font-size: 2rem; text-shadow: 0 0 8px var(--neon-green); }
 
         #sos-card.alert {
-            background: rgba(255, 68, 68, 0.2);
+            background: rgba(255, 68, 68, 0.1);
             border-color: var(--alert-red);
             color: var(--alert-red);
             animation: blink 1s infinite;
         }
 
-        @keyframes blink {
-            50% { opacity: 0.5; }
-        }
-
-        .status-bar {
-            position: fixed;
-            bottom: 10px;
-            right: 20px;
-            font-size: 0.8rem;
-        }
+        @keyframes blink { 50% { opacity: 0.5; } }
     </style>
 </head>
 <body>
 
 <header>
-    <h1>Agent Telemetry Terminal</h1>
+    <h1>Agent Command Center</h1>
 </header>
 
-<div class="container">
+<div id="sidebar">
+    <h3>🔍 Activity Logs</h3>
+    <div id="logs">
+        <div class="log-entry"><span class="time">[22:30]</span> System initialized.</div>
+    </div>
+    <div id="connection-status">
+        CONNECTION: <span id="status" style="color: yellow;">CONNECTING...</span>
+    </div>
+</div>
+
+<div id="map-container">
+    <div id="map"></div>
+</div>
+
+<div id="vitals">
     <div class="card">
         <h3>❤️ HEART RATE</h3>
         <h2 id="heart">--</h2>
@@ -103,40 +156,85 @@
         <h2 id="calories">--</h2>
     </div>
     <div class="card">
-        <h3>📍 COORDINATES</h3>
-        <h2 id="location" style="font-size: 1.2rem;">FETCHING...</h2>
+        <h3>📍 Tactical coordinates</h3>
+        <h2 id="location" style="font-size: 1.2rem;">Online</h2>
     </div>
     <div id="sos-card" class="card">
-        <h3>🚨 STATUS</h3>
+        <h3>🚨 Status</h3>
         <h2 id="sos">STANDBY</h2>
     </div>
-</div>
-
-<div class="status-bar">
-    CONNECTION: <span id="status" style="color: yellow;">CONNECTING...</span>
 </div>
 
 <script>
     const socket = io();
     const statusEl = document.getElementById('status');
+    const logsEl = document.getElementById('logs');
+    let map, marker;
 
+    // --- Initialize Tactical Map (Dark Mode) ---
+    function initMap() {
+        // Default position: Nikaia (near your Raspberry Pi)
+        map = L.map('map').setView([37.9702, 23.6409], 15);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: 'Tactical Intel'
+        }).addTo(map);
+
+        // Cyber Icon for Marker
+        const cyberIcon = L.divIcon({
+            className: 'cyber-icon',
+            html: '<div style="width:15px; height:15px; border-radius:50%; background-color:#00ff9d; box-shadow:0 0 10px #00ff9d;"></div>'
+        });
+
+        marker = L.marker([37.9702, 23.6409], {icon: cyberIcon}).addTo(map);
+    }
+
+    initMap();
+
+    // --- Activity Log Helper ---
+    function addLog(message) {
+        const now = new Date();
+        const timeStr = `[${now.getHours()}:${now.getMinutes()}]`;
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        entry.innerHTML = `<span class="time">${timeStr}</span> ${message}`;
+        logsEl.prepend(entry);
+    }
+
+    // --- Socket.io Listeners ---
     socket.on('connect', () => {
-        statusEl.innerText = 'ONLINE';
+        statusEl.innerText = 'TACTICAL LINK LIVE';
         statusEl.style.color = 'var(--neon-green)';
+        addLog('Connection established.');
     });
 
     socket.on('update', (data) => {
         document.getElementById("heart").innerText = data.heart || 0;
         document.getElementById("steps").innerText = data.steps || 0;
         document.getElementById("calories").innerText = data.calories || 0;
-        document.getElementById("location").innerText = data.location || "UNKNOWN";
         
+        // --- Update GPS Map ---
+        if(data.location && data.location.includes(",")) {
+            const coords = data.location.split(",");
+            const lat = parseFloat(coords[0]);
+            const lng = parseFloat(coords[1]);
+            
+            if(!isNaN(lat) && !isNaN(lng)) {
+                map.setView([lat, lng], 17);
+                marker.setLatLng([lat, lng]);
+                document.getElementById("location").innerText = "TRACKING";
+                addLog('Tactical coordinates updated.');
+            }
+        }
+        
+        // --- Update SOS Status ---
         const sosCard = document.getElementById("sos-card");
         const sosText = document.getElementById("sos");
         
         if(data.sos) {
             sosCard.classList.add('alert');
             sosText.innerText = "EMERGENCY";
+            addLog('🚨 ALERT: SOS TRIGGERED!');
         } else {
             sosCard.classList.remove('alert');
             sosText.innerText = "SAFE";
